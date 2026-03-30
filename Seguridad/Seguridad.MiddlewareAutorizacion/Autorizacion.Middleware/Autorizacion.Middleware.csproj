@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-	  <None Include="..\Readme.md" Pack="true" PackagePath="\" Link="README.md" />
+	  <None Include="..\..\Readme.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
