@@ -9,7 +9,7 @@ namespace web.Pages.Vehiculos
     public class DetalleModel : PageModel
     {
         private readonly IConfiguracion _configuracion;
-        public VehiculoResponse vehiculo { get; set; }=default!;
+        public VehiculoResponse vehiculo { get; set; } = default!;
         public DetalleModel(IConfiguracion configuracion)
         {
             _configuracion = configuracion;
@@ -19,8 +19,8 @@ namespace web.Pages.Vehiculos
         {
             string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints",
               "ObtenerVehiculo");
-            var cliente = new HttpClient();
-            var solicitud = new HttpRequestMessage(HttpMethod.Get, string.Format(endpoint,id));
+            using var cliente = ObtenerClienteConToken();  // ★ reemplaza new HttpClient()
+            var solicitud = new HttpRequestMessage(HttpMethod.Get, string.Format(endpoint, id));
             var respuesta = await cliente.SendAsync(solicitud);
             respuesta.EnsureSuccessStatusCode();
             var resultado = await respuesta.Content.ReadAsStringAsync();
@@ -29,5 +29,18 @@ namespace web.Pages.Vehiculos
             vehiculo = JsonSerializer.Deserialize<VehiculoResponse>(resultado, opciones);
 
         }
+
+        private HttpClient ObtenerClienteConToken()
+        {
+            var tokenClaim = HttpContext.User.Claims
+                .FirstOrDefault(c => c.Type == "AccessToken");
+            using var cliente = ObtenerClienteConToken();
+            if (tokenClaim != null)
+                cliente.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue(
+                        "Bearer", tokenClaim.Value);
+            return cliente;
+        }
+
     }
 }

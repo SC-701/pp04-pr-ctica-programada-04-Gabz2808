@@ -34,11 +34,11 @@ namespace web.Pages.Vehiculos
                 return NotFound();
             string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints",
             "ObtenerVehiculo");
-            var cliente = new HttpClient();
+            using var cliente = ObtenerClienteConToken();  // ★ reemplaza new HttpClient()
             var solicitud = new HttpRequestMessage(HttpMethod.Get, string.Format(endpoint, id));
             var respuesta = await cliente.SendAsync(solicitud);
             respuesta.EnsureSuccessStatusCode();
-            if(respuesta.StatusCode == HttpStatusCode.OK)
+            if (respuesta.StatusCode == HttpStatusCode.OK)
             {
                 await ObtenerMarcas();
                 var resultado = await respuesta.Content.ReadAsStringAsync();
@@ -46,48 +46,48 @@ namespace web.Pages.Vehiculos
                 { PropertyNameCaseInsensitive = true };
                 vehiculoResponse = JsonSerializer.Deserialize<VehiculoResponse>(resultado, opciones);
 
-                if(vehiculoResponse != null)
+                if (vehiculoResponse != null)
                 {
-                marcaSeleccionada = Guid.Parse(marcas.Where(m=>m.Text==vehiculoResponse.Marca).FirstOrDefault().Value);
-                    modelos = (await ObtenerModelos(marcaSeleccionada)).Select(m=>
-                    
+                    marcaSeleccionada = Guid.Parse(marcas.Where(m => m.Text == vehiculoResponse.Marca).FirstOrDefault().Value);
+                    modelos = (await ObtenerModelos(marcaSeleccionada)).Select(m =>
+
                     new SelectListItem
                     {
                         Value = m.Id.ToString(),
-                        Text= m.Nombre,
-                        Selected= m.Nombre == vehiculoResponse.Modelo
+                        Text = m.Nombre,
+                        Selected = m.Nombre == vehiculoResponse.Modelo
 
                     }
                     ).ToList();
                     modeloSeleccionado = Guid.Parse(modelos.Where(m => m.Text == vehiculoResponse.Modelo).FirstOrDefault().Value);
                 }
-            }            
-         
+            }
+
             return Page();
         }
 
         public async Task<ActionResult> OnPost()
         {
-            if(!ModelState.IsValid)
-            
+            if (!ModelState.IsValid)
+
                 return Page();
-            
 
-            string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints","EditarVehiculo");
-            var cliente = new HttpClient();
-            var respuesta = await cliente.PutAsJsonAsync<VehiculoRequest>(string.Format(endpoint,vehiculoResponse.Id),
+
+            string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints", "EditarVehiculo");
+            using var cliente = ObtenerClienteConToken();  // ★ reemplaza new HttpClient()
+            var respuesta = await cliente.PutAsJsonAsync<VehiculoRequest>(string.Format(endpoint, vehiculoResponse.Id),
                 new VehiculoRequest
-            {
-                Placa = vehiculoResponse.Placa,
-                IdModelo = modeloSeleccionado,
-                Anio = vehiculoResponse.Anio,
-                Color = vehiculoResponse.Color,
-                Precio = vehiculoResponse.Precio,
-                CorreoPropietario = vehiculoResponse.CorreoPropietario,
-                TelefonoPropietario = vehiculoResponse.TelefonoPropietario
+                {
+                    Placa = vehiculoResponse.Placa,
+                    IdModelo = modeloSeleccionado,
+                    Anio = vehiculoResponse.Anio,
+                    Color = vehiculoResponse.Color,
+                    Precio = vehiculoResponse.Precio,
+                    CorreoPropietario = vehiculoResponse.CorreoPropietario,
+                    TelefonoPropietario = vehiculoResponse.TelefonoPropietario
 
 
-            });
+                });
             respuesta.EnsureSuccessStatusCode();
             return RedirectToPage("./Index");
         }
@@ -96,7 +96,7 @@ namespace web.Pages.Vehiculos
         {
             string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints",
                "ObtenerMarcas");
-            var cliente = new HttpClient();
+            using var cliente = ObtenerClienteConToken();  // ★ reemplaza new HttpClient()
             var solicitud = new HttpRequestMessage(HttpMethod.Get, endpoint);
             var respuesta = await cliente.SendAsync(solicitud);
             respuesta.EnsureSuccessStatusCode();
@@ -117,8 +117,8 @@ namespace web.Pages.Vehiculos
         {
             string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints",
                "ObtenerModelos");
-            var cliente = new HttpClient();
-            var solicitud = new HttpRequestMessage(HttpMethod.Get, string.Format(endpoint,marcaID));
+            using var cliente = ObtenerClienteConToken();  // ★ reemplaza new HttpClient()
+            var solicitud = new HttpRequestMessage(HttpMethod.Get, string.Format(endpoint, marcaID));
             var respuesta = await cliente.SendAsync(solicitud);
             respuesta.EnsureSuccessStatusCode();
             if (respuesta.StatusCode == HttpStatusCode.OK)
@@ -128,15 +128,27 @@ namespace web.Pages.Vehiculos
                 { PropertyNameCaseInsensitive = true };
                 return JsonSerializer.Deserialize<List<Modelo>>(resultado, opciones);
             }
-           
-                return new List<Modelo>();
-            
+
+            return new List<Modelo>();
+
         }
 
         public async Task<JsonResult> OnGetObtenerModelos(Guid marcaID)
         {
             var modelos = await ObtenerModelos(marcaID);
             return new JsonResult(modelos);
+        }
+
+        private HttpClient ObtenerClienteConToken()
+        {
+            var tokenClaim = HttpContext.User.Claims
+                .FirstOrDefault(c => c.Type == "AccessToken");
+            using var cliente = ObtenerClienteConToken();
+            if (tokenClaim != null)
+                cliente.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue(
+                        "Bearer", tokenClaim.Value);
+            return cliente;
         }
     }
 }

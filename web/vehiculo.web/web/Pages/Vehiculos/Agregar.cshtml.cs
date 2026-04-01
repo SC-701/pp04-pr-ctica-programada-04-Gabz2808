@@ -40,7 +40,7 @@ namespace web.Pages.Vehiculos
 
             string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints",
               "AgregarVehiculo");
-            var cliente = new HttpClient();
+            using var cliente = ObtenerClienteConToken();  
             var solicitud = new HttpRequestMessage(HttpMethod.Post, endpoint);
             var respuesta = await cliente.PostAsJsonAsync(endpoint, vehiculo);
             respuesta.EnsureSuccessStatusCode();
@@ -51,7 +51,7 @@ namespace web.Pages.Vehiculos
         {
             string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints",
                "ObtenerMarcas");
-            var cliente = new HttpClient();
+            using var cliente = ObtenerClienteConToken();
             var solicitud = new HttpRequestMessage(HttpMethod.Get, endpoint);
             var respuesta = await cliente.SendAsync(solicitud);
             respuesta.EnsureSuccessStatusCode();
@@ -72,7 +72,7 @@ namespace web.Pages.Vehiculos
         {
             string endpoint = _configuracion.ObtenerMetodo("ApiEndPoints",
                "ObtenerModelos");
-            var cliente = new HttpClient();
+            using var cliente = ObtenerClienteConToken();
             var solicitud = new HttpRequestMessage(HttpMethod.Get, string.Format(endpoint, marcaID));
             var respuesta = await cliente.SendAsync(solicitud);
             respuesta.EnsureSuccessStatusCode();
@@ -95,5 +95,17 @@ namespace web.Pages.Vehiculos
             var modelos = await ObtenerModelos(marcaID);
             return new JsonResult(modelos);
         }
+        private HttpClient ObtenerClienteConToken()
+        {
+            var tokenClaim = HttpContext.User.Claims
+                .FirstOrDefault(c => c.Type == "AccessToken");
+            using var cliente = ObtenerClienteConToken();
+            if (tokenClaim != null)
+                cliente.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue(
+                        "Bearer", tokenClaim.Value);
+            return cliente;
+        }
+
     }
 }
